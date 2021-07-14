@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Dylan Graham"
+	],
+	"copyright": "Copyright © 2021, Dylan Graham",
+	"description": "C# like records for D",
+	"license": "MIT",
+	"name": "record",
+}

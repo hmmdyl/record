@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/drecord
+drecord.so
+drecord.dylib
+drecord.dll
+drecord.a
+drecord.lib
+drecord-test-*
+*.exe
+*.o
+*.obj
+*.lst

@@ -1,7 +1,7 @@
 # Record
 [C#-like](https://docs.microsoft.com/en-us/dotnet/csharp/whats-new/tutorials/records) records for D
 
-Records are classes and provide boilerplate implementations properties, equality, hashing and toString. Get only fields can be set at construction, or when `duplicate` is called.
+Records are classes and provide boilerplate implementations for properties, equality, hashing and toString. Get only fields can be set at construction, or when `duplicate` is called.
 
 ### Examples:
 ```d
@@ -11,7 +11,7 @@ alias MyRecord = record!(
     get!(int, "x"), /// x is an int, can only be set during construction
     get_set!(float, "y"), /// y is a float, can be get or set whenever
     property!("getDoubleOfX", (r) => r.x * 2), /// a property that returns the double of x
-    property!("getMultipleOfX", (r, m) => r.x * m, int), /// a property that takes an argument and multiples x by that value
+    property!("getMultipleOfX", (r, m) => r.x * m, int), /// that takes an argument and multiples x by that value
     property!("printY", (r) => writeln(r.y)), /// prints y
     property!("resetY", (r) => r.y = 0)); /// resets y to 0f
 
@@ -25,6 +25,8 @@ writeln(r.getMultipleOfX(4)); // 48
 r.printY; // 4.5
 r.resetY;
 writeln(r.y); // 0
+r.y = 13f;
+r.printY; // 13
 
 /// Duplicate r, and set x to 17 (we can only do this in ctor, or during duplication)
 /// This is equivalent to C#'s "with" syntax for records [0]

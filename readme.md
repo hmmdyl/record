@@ -20,6 +20,7 @@ auto r = new MyRecord(12, 4.5f); /// sets x, y
 writeln(r); // { x = 12, y = 4.5f }
 writeln(r.toHash); // 376
 
+writeln(r.x); // 12
 writeln(r.getDoubleOfX); // 24
 writeln(r.getMultipleOfX(4)); // 48
 r.printY; // 4.5

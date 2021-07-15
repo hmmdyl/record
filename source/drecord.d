@@ -8,15 +8,21 @@ import std.conv : to;
 + Params:
 +	type: The type the field will be
 +	name: Name of the field ++/
-template get(alias type, string name)
+template get(alias type, string name, args...)
 {
+	static assert(args.length <= 1, "There may only be 0 or 1 default initialisers");
+
 	private alias type_ = type;
 	private alias name_ = name;
+	private alias args_ = args;
 }
 
-private mixin template getImpl(alias type, string name)
+private mixin template getImpl(alias type, string name, args...)
 {
-	mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_;");
+	static if(args.length == 0)
+		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_;");
+	else
+		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
 	mixin("public @property auto " ~ name ~ "() { return " ~ name ~ "_; }");
 }
 
@@ -24,15 +30,21 @@ private mixin template getImpl(alias type, string name)
 + Params:
 +	type: The type the field will be
 +	name: Name of the field ++/
-template get_set(alias type, string name)
+template get_set(alias type, string name, args...)
 {
+	static assert(args.length <= 1, "There may only be 0 or 1 default initialisers");
+
 	private alias type_ = type;
 	private alias name_ = name;
+	private alias args_ = args;
 }
 
-private mixin template get_setImpl(alias type, string name)
+private mixin template get_setImpl(alias type, string name, args...)
 {
-	mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_;");
+	static if(args.length == 0)
+		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_;");
+	else
+		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
 	mixin("public @property auto " ~ name ~ "() { return " ~ name ~ "_; }");
 	mixin("public @property void " ~ name ~ "(" ~ type.stringof ~ " nval__) { " ~ name ~ "_ = nval__; }");
 }
@@ -134,9 +146,9 @@ template record(args...)
 		static foreach(item; AliasSeq!args)
 		{
 			static if(isGet!item)
-				mixin getImpl!(item.type_, item.name_);
+				mixin getImpl!(item.type_, item.name_, item.args_);
 			else static if(isGetSet!item)
-				mixin get_setImpl!(item.type_, item.name_);
+				mixin get_setImpl!(item.type_, item.name_, item.args_);
 			else static if(isProperty!item) 
 				mixin propertyImpl!(item.name_, item.accessor_, item.args_);
 			else static assert(false, "Unsupported type. Please ensure types for record are either get!T, get_set!T, property!T");
@@ -180,7 +192,17 @@ template record(args...)
 			size_t result = 0;
 
 			static foreach(i, item; Filter!(isField, AliasSeq!args))
-				result = result * 31 + cast(size_t)mixin(item.name_ ~ "_");
+			{
+				static if(is(item.type_ == class) || is(item.type_ == interface))
+					result = result * 31 + cast(size_t)mixin(item.name_ ~ "_.toHash()");
+				else static if(is(item.type_ == struct))
+				{
+					static if(__traits(compiles, () { item.type_().toHash; }()))
+						result = result * 31 + cast(size_t)mixin(item.name_ ~ "_");
+				}
+				else
+					result = result * 31 + cast(size_t)mixin(item.name_ ~ "_");
+			}
 
 			return result;
 		}

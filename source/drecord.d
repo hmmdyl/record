@@ -271,7 +271,13 @@ template record(args...)
 				mixin("r." ~ item.name_ ~ "_ = this." ~ item.name_ ~ "_;");
 			import core.vararg;
 			static foreach(item; AliasSeq!TNames)
+			{
+				static foreach(b; AliasSeq!args)
+					static if(isGetCompute!b)
+						static assert(b.name_ != item, "Cannot set a get_compute property '" ~ item ~ "'");
+
 				mixin("r." ~ item ~ "_ = va_arg!(typeof(" ~ item ~ "_))(_argptr);");
+			}
 			r.constructs;
 			return r;
 		}

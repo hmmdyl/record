@@ -64,6 +64,9 @@ alias DefaultRecord = record!(
 
 auto r = new DefaultRecord; // run the default initialisers
 writeln(r); // {x = 4, o = object.Object}
+
+auto q = DefaultRecord.create!"x"(9); // run default initialisers, then set x to 9
+writeln(r); // {x = 9, o = object.Object}
 ```
 
 [0]: [Records in C#](https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/types/records)

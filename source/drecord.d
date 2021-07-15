@@ -158,6 +158,16 @@ template record(args...)
 
 		mixin(genCtor);
 
+		/// Explicitly set certain fields, default initialise the rest
+		static record create(TNames...)(...)
+		{
+			auto r = new record;
+			import core.vararg;
+			static foreach(item; AliasSeq!TNames)
+				mixin("r." ~ item ~ "_ = va_arg!(typeof(" ~ item ~ "_))(_argptr);");
+			return r;
+		}
+
 		/++ Test for equality. Reference types are checked to ensure
 		+ their references are the same (point to same thing), value types
 		+ are checked to ensure their values are identical.

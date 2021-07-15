@@ -7,7 +7,8 @@ import std.conv : to;
 /++ Add a field and getter to the record
 + Params:
 +	type: The type the field will be
-+	name: Name of the field ++/
++	name: Name of the field 
++	args: An optional default initialisation lambda++/
 template get(alias type, string name, args...)
 {
 	static assert(args.length <= 1, "There may only be 0 or 1 default initialisers");
@@ -20,16 +21,17 @@ template get(alias type, string name, args...)
 private mixin template getImpl(alias type, string name, args...)
 {
 	static if(args.length == 0)
-		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_;");
+		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_;");
 	else
-		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
+		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
 	mixin("public @property auto " ~ name ~ "() { return " ~ name ~ "_; }");
 }
 
 /++ Add a field and appropriate getter and setter to the record
 + Params:
 +	type: The type the field will be
-+	name: Name of the field ++/
++	name: Name of the field 
++	args: An optional default initialisation lambda ++/
 template get_set(alias type, string name, args...)
 {
 	static assert(args.length <= 1, "There may only be 0 or 1 default initialisers");
@@ -42,11 +44,30 @@ template get_set(alias type, string name, args...)
 private mixin template get_setImpl(alias type, string name, args...)
 {
 	static if(args.length == 0)
-		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_;");
+		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_;");
 	else
-		mixin("protected @property " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
+		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
 	mixin("public @property auto " ~ name ~ "() { return " ~ name ~ "_; }");
 	mixin("public @property void " ~ name ~ "(" ~ type.stringof ~ " nval__) { " ~ name ~ "_ = nval__; }");
+}
+
+template get_compute(alias type, string name, alias construct)
+{
+	private alias type_ = type;
+	private alias name_ = name;
+	private alias construct_ = construct;
+}
+
+private mixin template get_computeImpl(alias type, string name, alias construct)
+{
+	private static string generateImpl()
+	{
+		string header = "protected " ~ type.stringof ~ " " ~ name ~ "_;" ~ 
+			"protected @property auto " ~ name ~ "_construct() { return construct(this); }" ~
+			"public @property auto " ~ name ~ "() { return " ~ name ~ "_; }";
+		return header;
+	}
+	mixin(generateImpl);
 }
 
 /++ Add a property to the record
@@ -90,8 +111,11 @@ template record(args...)
 	private enum isGet(alias T) = __traits(isSame, TemplateOf!T, get);
 	private enum isGetSet(alias T) = __traits(isSame, TemplateOf!T, get_set);
 	private enum isProperty(alias T) = __traits(isSame, TemplateOf!T, property);
+	private enum isGetCompute(alias T) = __traits(isSame, TemplateOf!T, get_compute);
 
-	private enum isField(alias T) = isGet!T || isGetSet!T;
+	private enum isCtorParam(alias T) = isGet!T || isGetSet!T;
+	private enum numCtorParam = Filter!(isCtorParam, AliasSeq!args).length;
+	private enum isField(alias T) = isGet!T || isGetSet!T || isGetCompute!T;
 	private enum numFields = Filter!(isField, AliasSeq!args).length;
 
 	/// Generate a constructor that takes inputs for every field
@@ -100,16 +124,16 @@ template record(args...)
 		string header = "public this(";
 		string body_ = "{\n";
 
-		static foreach(i, item; Filter!(isField, AliasSeq!args))
+		static foreach(i, item; Filter!(isCtorParam, AliasSeq!args))
 		{
 			header ~= item.type_.stringof ~ " arg" ~ to!string(i) ~ "__";
 			body_ ~= "\t" ~ item.name_ ~ "_ = arg" ~ to!string(i) ~ "__;\n";
 
-			static if(i < numFields - 1)
+			static if(i < numCtorParam - 1)
 				header ~= ", ";
 		}
 		header ~= ")\n";
-		body_ ~= "}";
+		body_ ~= "constructs; }";
 		return header ~ body_;
 	}
 
@@ -151,20 +175,43 @@ template record(args...)
 				mixin get_setImpl!(item.type_, item.name_, item.args_);
 			else static if(isProperty!item) 
 				mixin propertyImpl!(item.name_, item.accessor_, item.args_);
+			else static if(isGetCompute!item)
+				mixin get_computeImpl!(item.type_, item.name_, item.construct_);
 			else static assert(false, "Unsupported type. Please ensure types for record are either get!T, get_set!T, property!T");
 		}
 
-		this() {}
+		this(bool runConstructs = true) 
+		{
+			if(runConstructs)
+			{
+				constructs;
+			}
+		}
+
+		private void constructs()
+		{
+			static foreach(item; Filter!(isGetCompute, AliasSeq!args))
+			{
+				mixin("this." ~ item.name_ ~ "_ = " ~ item.name_ ~ "_construct();");
+			}
+		}
 
 		mixin(genCtor);
 
 		/// Explicitly set certain fields, default initialise the rest
 		static record create(TNames...)(...)
 		{
-			auto r = new record;
+			auto r = new record(false);
 			import core.vararg;
 			static foreach(item; AliasSeq!TNames)
+			{
+				static foreach(b; AliasSeq!args)
+					static if(isGetCompute!b)
+						static assert(b.name_ != item, "Cannot set a get_compute property '" ~ item ~ "'");
+
 				mixin("r." ~ item ~ "_ = va_arg!(typeof(" ~ item ~ "_))(_argptr);");
+			}
+			r.constructs;
 			return r;
 		}
 
@@ -225,6 +272,7 @@ template record(args...)
 			import core.vararg;
 			static foreach(item; AliasSeq!TNames)
 				mixin("r." ~ item ~ "_ = va_arg!(typeof(" ~ item ~ "_))(_argptr);");
+			r.constructs;
 			return r;
 		}
 	}

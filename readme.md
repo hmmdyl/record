@@ -12,6 +12,18 @@ The hashing algorithm is very basic. It is `result = (31 * result) + currentFiel
 ### Printing
 Only fields are printed. The format is `{ fieldName = fieldValue, fieldName2 = fieldValue2, ...}`.
 
+### `get`
+Provides a field and accessor property. It can be default initialised or set during construction or duplication.
+
+### `get_set`
+Provides a field, accessor and mutator properties. It can be default initialised, set during construction or duplication, or freely at any other time.
+
+### `get_compute`
+This provides a lambda function that is invoked after all other fields have been initialised. This means you can run an expensive algorithm that is dependent on other record fields, and it only runs once during construction (or duplication).
+
+### `property`
+Provides a lambda method that can run a custom operation on the record fields.
+
 ### Examples
 General usage:
 ```d
@@ -67,6 +79,24 @@ writeln(r); // {x = 4, o = object.Object}
 
 auto q = DefaultRecord.create!"x"(9); // run default initialisers, then set x to 9
 writeln(r); // {x = 9, o = object.Object}
+```
+
+Property computation:
+```D
+alias MyRecord = record!(
+    get!(int, "x", () => 20),
+    // get_compute lets you compute a field after the rest have been initialised
+    get_compute!(float, "y", (rec) => rec.x * 2f)
+);
+
+auto r = new MyRecord;
+writeln(r); // {x = 20, y = 40f}
+r = new MyRecord(10);
+writeln(r); // {x = 10, y = 20f}
+r = MyRecord.create!"x"(5);
+writeln(r); // {x = 5, y = 10f}
+auto q = r.duplicate!"x"(2);
+writeln(q); // {x = 2, y = 4f}
 ```
 
 [0]: [Records in C#](https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/types/records)

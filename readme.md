@@ -13,6 +13,7 @@ The hashing algorithm is very basic. It is `result = (31 * result) + currentFiel
 Only fields are printed. The format is `{ fieldName = fieldValue, fieldName2 = fieldValue2, ...}`.
 
 ### Examples
+General usage:
 ```d
 import drecord;
 
@@ -49,6 +50,20 @@ writeln(q is r); // false
 auto b = r.duplicate; // duplicate, don't change any fields
 writeln(b == r); // true
 writeln(b is r); // false
+```
+
+Default initialisation:
+```D
+import drecord;
+
+alias DefaultRecord = record!(
+    // The third parameter is a lambda which provides default initialisation
+    get!(int, "x", () => 4), // x is set to 4 by default
+    get_set(Object, "o", () => new Object) // o is set to a new Object by default
+);
+
+auto r = new DefaultRecord; // run the default initialisers
+writeln(r); // {x = 4, o = object.Object}
 ```
 
 [0]: [Records in C#](https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/types/records)

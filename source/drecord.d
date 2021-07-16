@@ -21,9 +21,9 @@ template get(alias type, string name, args...)
 private mixin template getImpl(alias type, string name, args...)
 {
 	static if(args.length == 0)
-		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_;");
+		mixin("protected type " ~ name ~ "_;");
 	else
-		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
+		mixin("protected type " ~ name ~ "_ = AliasSeq!(args)[0]();");
 	mixin("public @property auto " ~ name ~ "() { return " ~ name ~ "_; }");
 }
 
@@ -44,9 +44,9 @@ template get_set(alias type, string name, args...)
 private mixin template get_setImpl(alias type, string name, args...)
 {
 	static if(args.length == 0)
-		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_;");
+		mixin("protected type " ~ name ~ "_;");
 	else
-		mixin("protected " ~ type.stringof ~ " " ~ name ~ "_ = AliasSeq!(args)[0]();");
+		mixin("protected type " ~ name ~ "_ = AliasSeq!(args)[0]();");
 	mixin("public @property auto " ~ name ~ "() { return " ~ name ~ "_; }");
 	mixin("public @property void " ~ name ~ "(" ~ type.stringof ~ " nval__) { " ~ name ~ "_ = nval__; }");
 }
@@ -71,7 +71,7 @@ private mixin template get_computeImpl(alias type, string name, alias construct)
 {
 	private static string generateImpl()
 	{
-		string header = "protected " ~ type.stringof ~ " " ~ name ~ "_;" ~ 
+		string header = "protected type " ~ name ~ "_;" ~ 
 			"protected @property auto " ~ name ~ "_construct() { return construct(this); }" ~
 			"public @property auto " ~ name ~ "() { return " ~ name ~ "_; }";
 		return header;
@@ -117,6 +117,9 @@ private mixin template propertyImpl(string name, alias accessor, args...)
 
 template record(args...)
 {
+	import std.meta;
+	import std.traits;
+
 	private enum isGet(alias T) = __traits(isSame, TemplateOf!T, get);
 	private enum isGetSet(alias T) = __traits(isSame, TemplateOf!T, get_set);
 	private enum isProperty(alias T) = __traits(isSame, TemplateOf!T, property);
@@ -126,25 +129,6 @@ template record(args...)
 	private enum numCtorParam = Filter!(isCtorParam, AliasSeq!args).length;
 	private enum isField(alias T) = isGet!T || isGetSet!T || isGetCompute!T;
 	private enum numFields = Filter!(isField, AliasSeq!args).length;
-
-	/// Generate a constructor that takes inputs for every field
-	private static string genCtor()
-	{
-		string header = "public this(";
-		string body_ = "{\n";
-
-		static foreach(i, item; Filter!(isCtorParam, AliasSeq!args))
-		{
-			header ~= item.type_.stringof ~ " arg" ~ to!string(i) ~ "__";
-			body_ ~= "\t" ~ item.name_ ~ "_ = arg" ~ to!string(i) ~ "__;\n";
-
-			static if(i < numCtorParam - 1)
-				header ~= ", ";
-		}
-		header ~= ")\n";
-		body_ ~= "constructs; }";
-		return header ~ body_;
-	}
 
 	/++ Test for equality. Reference types are checked to ensure
 	+ their references are the same (point to same thing), value types
@@ -206,8 +190,19 @@ template record(args...)
 			}
 		}
 
-		/// Explicitly set all fields
-		mixin(genCtor);
+		private alias GetType(alias T) = T.type_;
+		private alias CtorParams = Filter!(isCtorParam, args);
+		private alias CtorParamTypes = staticMap!(GetType, CtorParams);
+
+		/// Explicitly set each `get`, `get_set` field
+		this(CtorParamTypes ctorArgs)
+		{
+			foreach(i, a; ctorArgs)
+			{
+				mixin("this." ~ CtorParams[i].name_ ~ "_ = a;");
+			}
+			constructs;
+		}
 
 		/// Explicitly set certain fields, default initialise the rest
 		static record create(TNames...)(...)

@@ -1,4 +1,6 @@
 # Record
+[DUB Package](https://code.dlang.org/packages/record)
+
 [C#-like](https://docs.microsoft.com/en-us/dotnet/csharp/whats-new/tutorials/records) records for D
 
 Records are classes and provide boilerplate implementations for properties, equality, hashing and toString. Get only fields can be set at construction, or when `duplicate` is called.

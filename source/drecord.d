@@ -283,3 +283,75 @@ template record(args...)
 		}
 	}
 }
+
+unittest
+{
+	alias MyRecord = record!(
+		get!(int, "x"), /// x is an int, can only be set during construction
+		get_set!(float, "y"), /// y is a float, can be get or set whenever
+		property!("getDoubleOfX", (r) => r.x * 2), /// a property that returns the double of x
+		property!("getMultipleOfX", (r, m) => r.x * m, int), /// that takes an argument and multiples x by that value
+		property!("resetY", (r) => r.y = 0) /// resets y to 0f
+	); 
+
+	auto r = new MyRecord(12, 4.5f); /// sets x, y
+
+	assert(r.toString == `{x = 12, y = 4.5}`,);
+	assert(r.toHash == 376);
+
+	assert(r.x == 12);
+	assert(r.getDoubleOfX == 24);
+	assert(r.getMultipleOfX(4) == 48);
+	assert(r.y == 4.5f);
+	r.resetY;
+	assert(r.y == 0);
+	r.y = 13f;
+	assert(r.y == 13f);
+
+	/// Duplicate r, and set x to 17 (we can only do this in ctor, or during duplication)
+	/// This is equivalent to C#'s "with" syntax for records [0]
+	r.y = 0;
+	auto q = r.duplicate!("x")(17); 
+	assert(q.toString == `{x = 17, y = 0}`);
+	assert(q != r);
+	assert(q !is r);
+
+	auto b = r.duplicate; // duplicate, don't change any fields
+	assert(b == r);
+	assert(b !is r);
+}
+
+unittest
+{
+	alias DefaultRecord = record!(
+		// The third parameter is a lambda which provides default initialisation
+		get!(int, "x", () => 4), // x is set to 4 by default
+		get_set!(Object, "o", () => new Object) // o is set to a new Object by default
+	);
+
+	auto r = new DefaultRecord; // run the default initialisers
+	assert(r.toString == `{x = 4, o = object.Object}`);
+
+	auto q = DefaultRecord.create!"x"(9); // run default initialisers, then set x to 9
+	assert(q.toString == `{x = 9, o = object.Object}`);
+}
+
+version (unittest)
+{
+	alias TC3Record = record!(
+		get!(int, "x", () => 20),
+		// get_compute lets you compute a field after the rest have been initialised
+		get_compute!(float, "y", (rec) => rec.x * 2f)
+	);
+}
+unittest
+{
+	auto r = new TC3Record;
+	assert(r.toString == `{x = 20, y = 40}`);
+	r = new TC3Record(10);
+	assert(r.toString == `{x = 10, y = 20}`);
+	r = TC3Record.create!"x"(5);
+	assert(r.toString == `{x = 5, y = 10}`);
+	auto q = r.duplicate!"x"(2);
+	assert(q.toString == `{x = 2, y = 4}`);
+}

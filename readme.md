@@ -40,7 +40,7 @@ alias MyRecord = record!(
 
 auto r = new MyRecord(12, 4.5f); /// sets x, y
 
-writeln(r); // { x = 12, y = 4.5f }
+writeln(r); // {x = 12, y = 4.5}
 writeln(r.toHash); // 376
 
 writeln(r.x); // 12
@@ -51,6 +51,7 @@ r.resetY;
 writeln(r.y); // 0
 r.y = 13f;
 r.printY; // 13
+r.resetY;
 
 /// Duplicate r, and set x to 17 (we can only do this in ctor, or during duplication)
 /// This is equivalent to C#'s "with" syntax for records [0]
@@ -71,14 +72,14 @@ import drecord;
 alias DefaultRecord = record!(
     // The third parameter is a lambda which provides default initialisation
     get!(int, "x", () => 4), // x is set to 4 by default
-    get_set(Object, "o", () => new Object) // o is set to a new Object by default
+    get_set!(Object, "o", () => new Object) // o is set to a new Object by default
 );
 
 auto r = new DefaultRecord; // run the default initialisers
 writeln(r); // {x = 4, o = object.Object}
 
 auto q = DefaultRecord.create!"x"(9); // run default initialisers, then set x to 9
-writeln(r); // {x = 9, o = object.Object}
+writeln(q); // {x = 9, o = object.Object}
 ```
 
 Property computation:
@@ -90,13 +91,13 @@ alias MyRecord = record!(
 );
 
 auto r = new MyRecord;
-writeln(r); // {x = 20, y = 40f}
+writeln(r); // {x = 20, y = 40}
 r = new MyRecord(10);
-writeln(r); // {x = 10, y = 20f}
+writeln(r); // {x = 10, y = 20}
 r = MyRecord.create!"x"(5);
-writeln(r); // {x = 5, y = 10f}
+writeln(r); // {x = 5, y = 10}
 auto q = r.duplicate!"x"(2);
-writeln(q); // {x = 2, y = 4f}
+writeln(q); // {x = 2, y = 4}
 ```
 
 [0]: [Records in C#](https://docs.microsoft.com/en-us/dotnet/csharp/fundamentals/types/records)

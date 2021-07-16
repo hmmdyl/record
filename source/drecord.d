@@ -117,9 +117,6 @@ private mixin template propertyImpl(string name, alias accessor, args...)
 
 template record(args...)
 {
-	import std.meta;
-	import std.traits;
-
 	private enum isGet(alias T) = __traits(isSame, TemplateOf!T, get);
 	private enum isGetSet(alias T) = __traits(isSame, TemplateOf!T, get_set);
 	private enum isProperty(alias T) = __traits(isSame, TemplateOf!T, property);
@@ -129,34 +126,6 @@ template record(args...)
 	private enum numCtorParam = Filter!(isCtorParam, AliasSeq!args).length;
 	private enum isField(alias T) = isGet!T || isGetSet!T || isGetCompute!T;
 	private enum numFields = Filter!(isField, AliasSeq!args).length;
-
-	/++ Test for equality. Reference types are checked to ensure
-	+ their references are the same (point to same thing), value types
-	+ are checked to ensure their values are identical.
-	++/
-	private static string genEquals()
-	{
-		string res = "import std.math : isClose;\nbool result = true;\n";
-		static foreach(i, item; Filter!(isField, AliasSeq!args))
-		{
-			static if(is(item.type_ == class) ||
-					  is(item.type_ == interface) ||
-					  isPointer!(item.type_))
-			{
-				res ~= "if(" ~ item.name_ ~ "_ !is otherRec." ~ item.name_ ~ "_) { result = false; }\n";
-			}
-			else static if(isFloatingPoint!(item.type_))
-			{
-				res ~= "if(!isClose(" ~ item.name_ ~ "_, otherRec." ~ item.name_ ~ "_)) { result = false; }\n";
-			}
-			else
-			{
-				res ~= "if(" ~ item.name_ ~ "_ != otherRec." ~ item.name_ ~ "_) { result = false; }\n";
-			}
-		}
-		res ~= "return result;";
-		return res;
-	}
 
 	final class record
 	{
@@ -229,7 +198,26 @@ template record(args...)
 		{
 			if(record otherRec = cast(record)other)
 			{
-				mixin(genEquals);
+				import std.math : isClose;
+				bool result = true;
+				static foreach(i, item; Filter!(isField, AliasSeq!args))
+				{
+					static if(is(item.type_ == class) ||
+							  is(item.type_ == interface) ||
+								  isPointer!(item.type_))
+					{
+						mixin("if(" ~ item.name_ ~ "_ !is otherRec." ~ item.name_ ~ "_) { result = false; }");
+					}
+					else static if(isFloatingPoint!(item.type_))
+					{
+						mixin("if(!isClose(" ~ item.name_ ~ "_, otherRec." ~ item.name_ ~ "_)) { result = false; }");
+					}
+					else
+					{
+						mixin("if(" ~ item.name_ ~ "_ != otherRec." ~ item.name_ ~ "_) { result = false; }");
+					}
+				}
+				return result;
 			}
 			else return false;
 		}

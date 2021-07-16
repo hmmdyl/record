@@ -57,7 +57,7 @@ private mixin template get_setImpl(alias type, string name, args...)
 +	type: Type of the field
 +	name: Name of the field
 +	construct: A lambda value that sets this field
-+ Notice: the construct lambda must accept the record as its first parameter
++ Notice: the construct lambda must accept the record as its only parameter
 +	and return the field value.
 ++/
 template get_compute(alias type, string name, alias construct)

@@ -51,12 +51,11 @@ r.resetY;
 writeln(r.y); // 0
 r.y = 13f;
 r.printY; // 13
-r.resetY;
 
 /// Duplicate r, and set x to 17 (we can only do this in ctor, or during duplication)
 /// This is equivalent to C#'s "with" syntax for records [0]
 auto q = r.duplicate!("x")(17); 
-writeln(q); // {x = 17, y = 0}
+writeln(q); // {x = 17, y = 13}
 writeln(q == r); // false
 writeln(q is r); // false
 

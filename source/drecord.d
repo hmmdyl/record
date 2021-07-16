@@ -8,7 +8,7 @@ import std.conv : to;
 + Params:
 +	type: The type the field will be
 +	name: Name of the field 
-+	args: An optional default initialisation lambda++/
++	args: An optional default initialisation lambda (no arguments, returns value) ++/
 template get(alias type, string name, args...)
 {
 	static assert(args.length <= 1, "There may only be 0 or 1 default initialisers");
@@ -31,7 +31,7 @@ private mixin template getImpl(alias type, string name, args...)
 + Params:
 +	type: The type the field will be
 +	name: Name of the field 
-+	args: An optional default initialisation lambda ++/
++	args: An optional default initialisation lambda (no arguments, returns value) ++/
 template get_set(alias type, string name, args...)
 {
 	static assert(args.length <= 1, "There may only be 0 or 1 default initialisers");
@@ -51,6 +51,15 @@ private mixin template get_setImpl(alias type, string name, args...)
 	mixin("public @property void " ~ name ~ "(" ~ type.stringof ~ " nval__) { " ~ name ~ "_ = nval__; }");
 }
 
+/++ Add a field whose value is computed when the record is created.
++ It is run after `get`, and `get_set` fields have been set.
++ Params:
++	type: Type of the field
++	name: Name of the field
++	construct: A lambda value that sets this field
++ Notice: the construct lambda must accept the record as its first parameter
++	and return the field value.
+++/
 template get_compute(alias type, string name, alias construct)
 {
 	private alias type_ = type;
@@ -180,6 +189,7 @@ template record(args...)
 			else static assert(false, "Unsupported type. Please ensure types for record are either get!T, get_set!T, property!T");
 		}
 
+		/// Default initialise all fields
 		this(bool runConstructs = true) 
 		{
 			if(runConstructs)
@@ -196,6 +206,7 @@ template record(args...)
 			}
 		}
 
+		/// Explicitly set all fields
 		mixin(genCtor);
 
 		/// Explicitly set certain fields, default initialise the rest
@@ -244,6 +255,7 @@ template record(args...)
 			return result;
 		}
 
+		/// Compute the hash of this record. Algorithm is `result = 31 * previousResult + currentField.toHash`
 		override nothrow @trusted size_t toHash()
 		{
 			size_t result = 0;

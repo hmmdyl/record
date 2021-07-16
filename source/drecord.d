@@ -268,6 +268,12 @@ template record(args...)
 				{
 					static if(__traits(compiles, () { item.type_().toHash; }()))
 						result = result * 31 + cast(size_t)mixin(item.name_ ~ "_");
+					else
+						result = result * 31 + cast(size_t)mixin(item.name_ ~ "_.hashOf");
+				}
+				else static if(isArray!(item.type_) || isAssociativeArray!(item.type_))
+				{
+					result = result * 31 + cast(size_t)mixin(item.name_ ~ "_.hashOf");
 				}
 				else
 					result = result * 31 + cast(size_t)mixin(item.name_ ~ "_");
@@ -280,7 +286,13 @@ template record(args...)
 		{
 			record r = new record;
 			static foreach(item; Filter!(isField, AliasSeq!args))
-				mixin("r." ~ item.name_ ~ "_ = this." ~ item.name_ ~ "_;");
+			{
+				static if(isArray!(item.type_) || isAssociativeArray!(item.type_))
+					mixin("r." ~ item.name_ ~ "_ = this." ~ item.name_ ~ "_.dup;"); // dup array
+				else 
+					mixin("r." ~ item.name_ ~ "_ = this." ~ item.name_ ~ "_;");
+			}
+
 			import core.vararg;
 			static foreach(item; AliasSeq!TNames)
 			{
